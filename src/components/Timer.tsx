@@ -39,7 +39,7 @@ const renderTime = ({ remainingTime }: { remainingTime: number }) => {
 };
 
 const Timer = () => {
-  const [time, setTime] = useState<number>(0);
+  const [time, setTime] = useState<number>(10);
   const [isRunning, setIsRunning] = useState<boolean>(false);
   const [progress, setProgress] = useState<number>(time);
   const [key, setKey] = useState(0);
