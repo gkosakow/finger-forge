@@ -68,7 +68,7 @@ const renderTime = (remainingTime: number, stage: TimerStage, isPreparing: boole
   };
 
   if (stage === 'Not Started') {
-    return <div className='timer-label'>Press play button to begin!</div>;
+    return <div className='timer-label'>HANGBOARD TIMER</div>;
   };
 
   if (stage === 'Complete') {
@@ -124,6 +124,7 @@ const Timer = () => {
   // logic for handling preparation phase
   useEffect(() => {
     if (isPreparing && prepareTime > 0) {
+      console.log({ isPreparing, prepareTime });
       countdown();
       const timer = setInterval(() => {
         setPrepareTime((prevTime) => prevTime - 1);
@@ -136,23 +137,6 @@ const Timer = () => {
       setIsRunning(true);
     }
   }, [isPreparing, prepareTime]);
-
-  useEffect(() => {
-    if (isRunning) {
-      if (duration === 3) {
-        countdown();
-      }
-      if (duration === 2) {
-        countdown();
-      }
-      if (duration === 1) {
-        countdown();
-      }
-      if (duration === 0) {
-        go();
-      }
-    }
-  }, [duration, go, countdown, isRunning]);
 
   // logic for setting correct duration depending on stage
   useEffect(() => {
@@ -260,7 +244,7 @@ const Timer = () => {
 
   return (
     <div className='timer-container'>
-      <h1>HangBoard Timer</h1>
+      {/* <h1>HangBoard Timer</h1> */}
       <CountdownCircleTimer
         key={key}
         isPlaying={isRunning}
