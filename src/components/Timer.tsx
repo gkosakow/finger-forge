@@ -124,7 +124,6 @@ const Timer = () => {
   // logic for handling preparation phase
   useEffect(() => {
     if (isPreparing && prepareTime > 0) {
-      console.log({ isPreparing, prepareTime });
       countdown();
       const timer = setInterval(() => {
         setPrepareTime((prevTime) => prevTime - 1);
