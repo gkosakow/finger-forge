@@ -1,104 +1,215 @@
 import '../styles/Timer.css';
+import useSound from 'use-sound';
 import { useEffect, useState } from 'react';
-import { Box, IconButton, TextField } from '@mui/material';
+import { IconButton, TextField } from '@mui/material';
 import { CountdownCircleTimer } from 'react-countdown-circle-timer';
 import PlayArrowRoundedIcon from '@mui/icons-material/PlayArrowRounded';
 import PauseRoundedIcon from '@mui/icons-material/PauseRounded';
+import StopRoundedIcon from '@mui/icons-material/StopRounded';
+import SkipNextRoundedIcon from '@mui/icons-material/SkipNextRounded';
 import RestartAltRoundedIcon from '@mui/icons-material/RestartAltRounded';
 
-const renderTime = ({ remainingTime }: { remainingTime: number }) => {
-  if (remainingTime === 0) {
-    return <div className="timer-label">Complete!</div>;
-  }
+type TimerStage = 'Not Started' | 'Hang' | 'Rest' | 'Complete';
+
+const defaults = {
+  intervals: 3,
+  prepareTime: 3,
+  hangMinutes: '00',
+  hangSeconds: '10',
+  restMinutes: '00',
+  restSeconds: '30',
+};
+
+const boxStyle = {
+  display: 'flex',
+  color: 'white',
+  backgroundColor: '#4b5769',
+  borderRadius: '10px',
+  padding: '5px 5px',
+  width: '100%',
+  height: 60,
+  fontSize: 20,
+};
+
+const buttonIconStyle = {
+  height: '100%',
+  width: '100%',
+  backgroundColor: '#4b5769',
+  borderRadius: '100px',
+  padding: 1
+};
+
+const buttonStyle = {
+  height: 100,
+  width: 100,
+  color: 'white',
+}
+
+const formatTime = (totalSeconds: number) => {
+  const minutes = Math.floor(totalSeconds / 60).toString();
+  const seconds = (totalSeconds % 60).toString().padStart(2, '0');
+
+  return { minutes, seconds };
+};
+
+const renderTime = (remainingTime: number, stage: TimerStage, isPreparing: boolean, prepareTime: number) => {
+  const label = stage === 'Hang' ? 'HANG' : 'REST';
+
+  if (isPreparing) {
+    return (
+      <div className='timer-label'>
+        <div className='text'>Starting in</div>
+        <div className='value'>{prepareTime}</div>
+        <div className='text'>seconds...</div>
+      </div>
+    );
+  };
+
+  if (stage === 'Not Started') {
+    return <div className='timer-label'>Press play button to begin!</div>;
+  };
+
+  if (stage === 'Complete') {
+    return <div className='timer-label'>Complete!</div>;
+  };
 
   if (remainingTime >= 60) {
-    const minutes = Math.floor(remainingTime / 60);
-    const seconds = remainingTime % 60;
-
-    const formattedMinutes = String(minutes).padStart(2, '0');
-    const formattedSeconds = String(seconds).padStart(2, '0');
+    const { minutes, seconds } = formatTime(remainingTime);
 
     return (
-      <div className="timer-label">
-        <div className="text">Remaining</div>
-        <div className="value">
-          {formattedMinutes}:{formattedSeconds}
-        </div>
-        <div className="text">minutes</div>
+      <div className='timer-label'>
+        <div className='text'>{label}</div>
+        <div className='value'>{minutes}:{seconds}</div>
+        <div className='text'>minutes</div>
       </div>
     );
   } else {
     return (
-      <div className="timer-label">
-        <div className="text">Remaining</div>
-        <div className="value">{remainingTime}</div>
-        <div className="text">seconds</div>
+      <div className='timer-label'>
+        <div className='text'>{label}</div>
+        <div className='value'>{remainingTime}</div>
+        <div className='text'>seconds</div>
       </div>
     );
   }
 };
 
+const calculateDuration = (minute: number, seconds: number) => {
+  return minute * 60 + seconds;
+};
+
 const Timer = () => {
-  const [time, setTime] = useState<number>(10);
-  const [isRunning, setIsRunning] = useState<boolean>(false);
-  const [progress, setProgress] = useState<number>(time);
   const [key, setKey] = useState(0);
-  const [isHangTime, setIsHangTime] = useState<boolean>(true);
+  const [stage, setStage] = useState<TimerStage>('Not Started');
+  const [isRunning, setIsRunning] = useState<boolean>(false);
+  const [duration, setDuration] = useState<number>(defaults.prepareTime);
+  const [isGrowing, setIsGrowing] = useState<boolean>(false);
+  const [isPreparing, setIsPreparing] = useState<boolean>(false);
+  const [prepareTime, setPrepareTime] = useState<number>(defaults.prepareTime);
   const [currentInterval, setCurrentInterval] = useState<number>(1);
 
-  const [intervals, setIntervals] = useState<number | string>(1);
-  const [hangTimeMinutes, setHangTimeMinutes] = useState<number | string>('00');
-  const [hangTimeSeconds, setHangTimeSeconds] = useState<number | string>('10');
-  const [restTimeMinutes, setRestTimeMinutes] = useState<number | string>('00');
-  const [restTimeSeconds, setRestTimeSeconds] = useState<number | string>('45');
+  const [intervals, setIntervals] = useState<number | string>(defaults.intervals);
+  const [hangTimeMinutes, setHangTimeMinutes] = useState<number | string>(defaults.hangMinutes);
+  const [hangTimeSeconds, setHangTimeSeconds] = useState<number | string>(defaults.hangSeconds);
+  const [restTimeMinutes, setRestTimeMinutes] = useState<number | string>(defaults.restMinutes);
+  const [restTimeSeconds, setRestTimeSeconds] = useState<number | string>(defaults.restSeconds);
 
+  const disableTextFields = (stage !== ('Not Started' || 'Complete'));
+
+  // const [countdown] = useSound();
+
+  // logic for handling preparation phase
   useEffect(() => {
-    const totalHangTime =
-      (parseInt(hangTimeMinutes as string, 10) || 0) * 60 +
-      (parseInt(hangTimeSeconds as string, 10) || 0);
+    if (isPreparing && prepareTime > 0) {
+      const timer = setInterval(() => {
+        setPrepareTime((prevTime) => prevTime - 1);
+      }, 1000);
 
-    setTime(totalHangTime);
-  }, [hangTimeMinutes, hangTimeSeconds]);
-
-  useEffect(() => {
-    if (time === 0 && isRunning) {
-      if (isHangTime) {
-        // Switch to rest time
-        console.log('Rest time');
-        const totalRestTime =
-          (parseInt(restTimeMinutes as string, 10) || 0) * 60 +
-          (parseInt(restTimeSeconds as string, 10) || 0);
-        setTime(totalRestTime);
-        setIsHangTime(false);
-      } else {
-        // Finish current interval and check if more intervals are left
-        if (currentInterval < parseInt(intervals as string, 10)) {
-          setCurrentInterval(currentInterval + 1);
-          const totalHangTime =
-            (parseInt(hangTimeMinutes as string, 10) || 0) * 60 +
-            (parseInt(hangTimeSeconds as string, 10) || 0);
-          setTime(totalHangTime);
-          setIsHangTime(true);
-        } else {
-          // All intervals completed
-          setIsRunning(false);
-          setCurrentInterval(1); // Reset intervals if desired
-        }
-      }
-      resetTimer();
+      return () => clearInterval(timer);
+    } else if (prepareTime === 0) {
+      setIsPreparing(false);
+      setPrepareTime(defaults.prepareTime);
+      setIsRunning(true);
     }
-  }, [time, isRunning, isHangTime, currentInterval, intervals, hangTimeMinutes, hangTimeSeconds, restTimeMinutes, restTimeSeconds]);
+  }, [isPreparing, prepareTime]);
 
+  // logic for setting correct duration depending on stage
+  useEffect(() => {
+    switch (stage) {
+      case 'Not Started':
+        // do nothing
+        break;
+      case 'Hang':
+        setIsGrowing(false);
+        setDuration(calculateDuration(hangTimeMinutes as number || 0, hangTimeSeconds as number || 0));
+        break;
+      case 'Rest':
+        setIsGrowing(true);
+        setDuration(calculateDuration(restTimeMinutes as number || 0, restTimeSeconds as number || 0));
+        break;
+      case 'Complete':
+        stop();
+        setIsRunning(false);
+        break;
+    }
+  }, [stage]);
+
+  // play/pauses timer
   const toggleTimer = () => {
-    setIsRunning(prevState => !prevState);
+    if (stage === 'Not Started') {
+      setStage('Rest');
+    }
+    if (!isRunning && stage !== 'Not Started') {
+      setIsPreparing(true);
+    } else {
+      setIsRunning((isRunning) => !isRunning);
+    }
   };
 
-  const resetTimer = () => {
-    setProgress(time);
-    setKey(prevKey => prevKey + 1);
+  // resets timer
+  const reset = () => {
+    setStage('Not Started');
+    setIsPreparing(false);
+    setPrepareTime(defaults.prepareTime);
+    setKey((prevKey) => prevKey + 1);
+    setCurrentInterval(1);
+    setDuration(calculateDuration(hangTimeMinutes as number, hangTimeSeconds as number));
   };
 
-  const handleChange = (
+  // stops timer
+  const stop = () => {
+    setIsRunning(false);
+  };
+
+  // moves to next stage
+  const nextStage = () => {
+    setKey((prevKey) => prevKey + 1);
+
+    const totalIntervals = intervals as number;
+
+    if (currentInterval < totalIntervals) {
+      if (stage === 'Rest') {
+        setStage('Hang');
+      }
+      else if (stage === 'Hang') {
+        setStage('Rest');
+        setCurrentInterval((prevInterval) => prevInterval + 1);
+      }
+    } else if (currentInterval === totalIntervals) {
+      if (stage === 'Hang') {
+        setStage('Complete');
+      } else {
+        setStage('Hang');
+      }
+    }
+  };
+
+
+  const skip = () => {
+    nextStage();
+  };
+
+  const handleTimeChange = (
     setter: React.Dispatch<React.SetStateAction<number | string>>,
     value: string
   ) => {
@@ -112,138 +223,181 @@ const Timer = () => {
     }
   };
 
+  const handleIntervalChange = (
+    setter: React.Dispatch<React.SetStateAction<number | string>>,
+    value: string
+  ) => {
+    if (value === '') {
+      setter('');
+    } else {
+      const numericValue = parseInt(value, 10);
+      if (!isNaN(numericValue) && numericValue > 0 && numericValue <= 100) {
+        setter(numericValue);
+      }
+    }
+  };
+
   return (
-    <div className="timer-container">
-      <h1>Hangboard Timer</h1>
-      <div className="timer">
-        <CountdownCircleTimer
-          key={key}
-          isPlaying={isRunning}
-          duration={progress}
-          colors={['#FFFFFF', '#FF0000']}
-          colorsTime={[10, 0]}
-          trailColor="#4b5769"
-          size={350}
-          onComplete={() => { setIsRunning(false) }}
+    <div className='timer-container'>
+      <h1>HangBoard Timer</h1>
+      <CountdownCircleTimer
+        key={key}
+        isPlaying={isRunning}
+        duration={duration}
+        colors={['#FFFFFF', '#9999FF']}
+        colorsTime={[10, 0]}
+        trailColor='#4b5769'
+        size={350}
+        onComplete={nextStage}
+        isGrowing={isGrowing}
+        isSmoothColorTransition={false}
+      >
+        {({ remainingTime }) => renderTime(remainingTime, stage, isPreparing, prepareTime)}
+      </CountdownCircleTimer>
+      <div className='timer-controls'>
+        <IconButton
+          onClick={() => {
+            stop();
+            reset();
+          }}
+          sx={buttonStyle}
         >
-          {renderTime}
-        </CountdownCircleTimer>
-      </div>
-      <div className="timer-controls">
-        <IconButton onClick={toggleTimer} sx={{ color: 'white' }}>
+          <StopRoundedIcon
+            sx={buttonIconStyle}
+          />
+        </IconButton>
+        <IconButton
+          onClick={(stage !== 'Complete') ? toggleTimer : reset}
+          sx={buttonStyle}
+          disabled={isPreparing}
+        >
           {isRunning ? (
-            <PauseRoundedIcon sx={{ height: '70px', width: '70px' }} />
+            <PauseRoundedIcon sx={buttonIconStyle} />
           ) : (
-            <PlayArrowRoundedIcon sx={{ height: '70px', width: '70px' }} />
+            stage === 'Complete' ?
+              <RestartAltRoundedIcon sx={{ ...buttonIconStyle, padding: '4px 8px 8px 8px' }} />
+              :
+              <PlayArrowRoundedIcon sx={buttonIconStyle} />
           )}
         </IconButton>
-        <IconButton onClick={resetTimer} sx={{ color: 'white' }}>
-          <RestartAltRoundedIcon sx={{ height: '70px', width: '70px' }} />
+        <IconButton
+          onClick={skip}
+          sx={buttonStyle}
+          disabled={!isRunning || isPreparing || stage === 'Complete'}
+        >
+          <SkipNextRoundedIcon
+            sx={buttonIconStyle}
+          />
         </IconButton>
       </div>
-      <div className="timer-settings">
-        <div>
-          <p>Intervals</p>
-          <Box display="flex" alignItems="center" width={140}>
+      <div className='timer-settings'>
+        <div className='setting'>
+          <div className='setting-label'>
+            Intervals
+          </div>
+          <div className={disableTextFields ? 'setting-time-disabled' : 'setting-time'}>
             <TextField
-              type="number"
+              variant='standard'
+              type='number'
               value={intervals}
-              onChange={(e) => handleChange(setIntervals, e.target.value)}
-              placeholder="1"
+              onChange={(e) => handleIntervalChange(setIntervals, e.target.value)}
+              placeholder='1'
               inputProps={{
                 min: 1,
-                style: {
-                  color: 'white',
-                  backgroundColor: '#4b5769',
-                  borderRadius: '5px',
-                },
+                max: 99,
+                style: { ...boxStyle, textAlign: 'center' },
               }}
+              InputProps={{
+                disableUnderline: true,
+              }}
+              fullWidth
+              disabled={disableTextFields}
             />
-          </Box>
+          </div>
         </div>
-        <div>
-          <p>Hang</p>
-          <Box display="flex" alignItems="center">
+        <div className='setting'>
+          <div className='setting-label'>
+            Hang
+          </div>
+          <div className={disableTextFields ? 'setting-time-disabled' : 'setting-time'}>
             <TextField
-              type="number"
+              variant='standard'
+              type='number'
               value={hangTimeMinutes}
-              variant="outlined"
-              placeholder="MM"
-              onChange={(e) => handleChange(setHangTimeMinutes, e.target.value)}
+              placeholder='MM'
+              onChange={(e) => handleTimeChange(setHangTimeMinutes, e.target.value)}
               inputProps={{
                 min: 0,
                 max: 59,
-                style: {
-                  color: 'white',
-                  backgroundColor: '#4b5769',
-                  borderRadius: '5px',
-                  textAlign: 'center',
-                },
+                style: { ...boxStyle, textAlign: 'end' },
               }}
-              sx={{ width: 60, marginRight: 1 }}
+              InputProps={{
+                disableUnderline: true,
+              }}
+              fullWidth
+              disabled={disableTextFields}
             />
             :
             <TextField
-              type="number"
+              variant='standard'
+              type='number'
               value={hangTimeSeconds}
-              variant="outlined"
-              placeholder="SS"
-              onChange={(e) => handleChange(setHangTimeSeconds, e.target.value)}
+              placeholder='SS'
+              onChange={(e) => handleTimeChange(setHangTimeSeconds, e.target.value)}
               inputProps={{
                 min: 0,
                 max: 59,
-                style: {
-                  color: 'white',
-                  backgroundColor: '#4b5769',
-                  borderRadius: '5px',
-                  textAlign: 'center',
-                },
+                style: { ...boxStyle, textAlign: 'start' },
               }}
-              sx={{ width: 60, marginLeft: 1 }}
+              InputProps={{
+                disableUnderline: true,
+              }}
+              fullWidth
+              disabled={disableTextFields}
             />
-          </Box>
+          </div>
         </div>
-        <div>
-          <p>Rest</p>
-          <Box display="flex" alignItems="center">
+        <div className='setting'>
+          <div className='setting-label'>
+            Rest
+          </div>
+          <div className={disableTextFields ? 'setting-time-disabled' : 'setting-time'}>
             <TextField
-              type="number"
+              variant='standard'
+              type='number'
               value={restTimeMinutes}
-              variant="outlined"
-              placeholder="MM"
-              onChange={(e) => handleChange(setRestTimeMinutes, e.target.value)}
+              placeholder='MM'
+              onChange={(e) => handleTimeChange(setRestTimeMinutes, e.target.value)}
               inputProps={{
                 min: 0,
                 max: 59,
-                style: {
-                  color: 'white',
-                  backgroundColor: '#4b5769',
-                  borderRadius: '5px',
-                  textAlign: 'center',
-                },
+                style: { ...boxStyle, textAlign: 'end' },
               }}
-              sx={{ width: 60, marginRight: 1 }}
+              InputProps={{
+                disableUnderline: true,
+              }}
+              fullWidth
+              disabled={disableTextFields}
             />
             :
             <TextField
-              type="number"
+              variant='standard'
+              type='number'
               value={restTimeSeconds}
-              variant="outlined"
-              placeholder="SS"
-              onChange={(e) => handleChange(setRestTimeSeconds, e.target.value)}
+              placeholder='SS'
+              onChange={(e) => handleTimeChange(setRestTimeSeconds, e.target.value)}
               inputProps={{
                 min: 0,
                 max: 59,
-                style: {
-                  color: 'white',
-                  backgroundColor: '#4b5769',
-                  borderRadius: '5px',
-                  textAlign: 'center',
-                },
+                style: { ...boxStyle, textAlign: 'start' },
               }}
-              sx={{ width: 60, marginLeft: 1 }}
+              InputProps={{
+                disableUnderline: true,
+              }}
+              fullWidth
+              disabled={disableTextFields}
             />
-          </Box>
+          </div>
         </div>
       </div>
     </div>
