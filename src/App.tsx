@@ -1,8 +1,8 @@
-import Home from "./pages/Home"
+import Timer from "./components/Timer";
 
 const App = () => {
   return (
-    <Home />
+    <Timer />
   );
 }
 
