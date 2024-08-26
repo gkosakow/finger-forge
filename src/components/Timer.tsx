@@ -1,4 +1,5 @@
 import '../styles/Timer.css';
+import Hangboard from '../images/hangboard.svg';
 import countdownSfx from '../sounds/countdown.mp3';
 import goSfx from '../sounds/go.mp3';
 import useSound from 'use-sound';
@@ -16,6 +17,7 @@ type TimerStage = 'Not Started' | 'Hang' | 'Rest' | 'Complete';
 const defaults = {
   intervals: 3,
   prepareTime: 3,
+  duration: 0,
   hangMinutes: '00',
   hangSeconds: '10',
   restMinutes: '00',
@@ -54,13 +56,15 @@ const formatTime = (totalSeconds: number) => {
   return { minutes, seconds };
 };
 
+
 const renderTime = (remainingTime: number, stage: TimerStage, isPreparing: boolean, prepareTime: number) => {
-  const label = stage === 'Hang' ? 'HANG' : 'REST';
+  const { minutes, seconds } = formatTime(remainingTime);
+  const label = stage.toLocaleUpperCase();
 
   if (isPreparing) {
     return (
       <div className='timer-label'>
-        <div className='text'>Starting in</div>
+        <div className='text'>Resuming in</div>
         <div className='value'>{prepareTime}</div>
         <div className='text'>seconds...</div>
       </div>
@@ -68,7 +72,15 @@ const renderTime = (remainingTime: number, stage: TimerStage, isPreparing: boole
   };
 
   if (stage === 'Not Started') {
-    return <div className='timer-label'>HANGBOARD TIMER</div>;
+    return (
+      <div>
+        <div className='timer-label'>
+          <div className='text' style={{ textAlign: 'center', color: 'white', fontWeight: 'bold' }}>HANGBOARD</div>
+          <img src={Hangboard} alt="Hangboard" width={400} height={110} />
+          <div className='text' style={{ textAlign: 'center', color: 'white', fontWeight: 'bold' }}>TIMER</div>
+        </div>
+      </div>
+    );
   };
 
   if (stage === 'Complete') {
@@ -76,8 +88,6 @@ const renderTime = (remainingTime: number, stage: TimerStage, isPreparing: boole
   };
 
   if (remainingTime >= 60) {
-    const { minutes, seconds } = formatTime(remainingTime);
-
     return (
       <div className='timer-label'>
         <div className='text'>{label}</div>
@@ -96,15 +106,18 @@ const renderTime = (remainingTime: number, stage: TimerStage, isPreparing: boole
   }
 };
 
-const calculateDuration = (minute: number, seconds: number) => {
-  return minute * 60 + seconds;
+const calculateDuration = (minute: number | string, seconds: number | string) => {
+  const min = typeof minute === 'string' ? parseInt(minute, 10) : minute;
+  const sec = typeof seconds === 'string' ? parseInt(seconds, 10) : seconds;
+
+  return min * 60 + sec;
 };
 
 const Timer = () => {
   const [key, setKey] = useState(0);
   const [stage, setStage] = useState<TimerStage>('Not Started');
   const [isRunning, setIsRunning] = useState<boolean>(false);
-  const [duration, setDuration] = useState<number>(defaults.prepareTime);
+  const [duration, setDuration] = useState<number>(defaults.duration);
   const [isGrowing, setIsGrowing] = useState<boolean>(false);
   const [isPreparing, setIsPreparing] = useState<boolean>(false);
   const [prepareTime, setPrepareTime] = useState<number>(defaults.prepareTime);
@@ -121,7 +134,6 @@ const Timer = () => {
   const [countdown] = useSound(countdownSfx, { volume: .5 });
   const [go] = useSound(goSfx, { volume: .5 });
 
-  // logic for handling preparation phase
   useEffect(() => {
     if (isPreparing && prepareTime > 0) {
       countdown();
@@ -137,28 +149,24 @@ const Timer = () => {
     }
   }, [isPreparing, prepareTime]);
 
-  // logic for setting correct duration depending on stage
   useEffect(() => {
     switch (stage) {
-      case 'Not Started':
-        // do nothing
-        break;
       case 'Hang':
         setIsGrowing(false);
-        setDuration(calculateDuration(hangTimeMinutes as number || 0, hangTimeSeconds as number || 0));
+        setDuration(calculateDuration(hangTimeMinutes, hangTimeSeconds));
         break;
       case 'Rest':
         setIsGrowing(true);
-        setDuration(calculateDuration(restTimeMinutes as number || 0, restTimeSeconds as number || 0));
+        setDuration(calculateDuration(restTimeMinutes, restTimeSeconds))
         break;
       case 'Complete':
         stop();
         setIsRunning(false);
         break;
     }
-  }, [stage]);
+  }, [stage, hangTimeMinutes, hangTimeSeconds, restTimeMinutes, restTimeSeconds]);
 
-  // play/pauses timer
+
   const toggleTimer = () => {
     if (stage === 'Not Started') {
       setStage('Rest');
@@ -177,15 +185,13 @@ const Timer = () => {
     setPrepareTime(defaults.prepareTime);
     setKey((prevKey) => prevKey + 1);
     setCurrentInterval(1);
-    setDuration(calculateDuration(hangTimeMinutes as number, hangTimeSeconds as number));
+    setDuration(defaults.duration);
   };
 
-  // stops timer
   const stop = () => {
     setIsRunning(false);
   };
 
-  // moves to next stage
   const nextStage = () => {
     setKey((prevKey) => prevKey + 1);
 
@@ -207,7 +213,6 @@ const Timer = () => {
       }
     }
   };
-
 
   const skip = () => {
     nextStage();
@@ -243,7 +248,6 @@ const Timer = () => {
 
   return (
     <div className='timer-container'>
-      {/* <h1>HangBoard Timer</h1> */}
       <CountdownCircleTimer
         key={key}
         isPlaying={isRunning}
@@ -260,7 +264,7 @@ const Timer = () => {
           if (0 < remainingTime && remainingTime <= 3) {
             countdown();
           }
-          if (remainingTime === 0) {
+          if (remainingTime === 0 && stage !== 'Not Started') {
             go();
           }
         }}
@@ -274,6 +278,7 @@ const Timer = () => {
             reset();
           }}
           sx={buttonStyle}
+          disabled={stage === 'Not Started' || stage === 'Complete'}
         >
           <StopRoundedIcon
             sx={buttonIconStyle}
