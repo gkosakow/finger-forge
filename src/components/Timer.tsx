@@ -1,4 +1,6 @@
 import '../styles/Timer.css';
+import countdownSfx from '../sounds/countdown.mp3';
+import goSfx from '../sounds/go.mp3';
 import useSound from 'use-sound';
 import { useEffect, useState } from 'react';
 import { IconButton, TextField } from '@mui/material';
@@ -116,22 +118,41 @@ const Timer = () => {
 
   const disableTextFields = (stage !== ('Not Started' || 'Complete'));
 
-  // const [countdown] = useSound();
+  const [countdown] = useSound(countdownSfx, { volume: .5 });
+  const [go] = useSound(goSfx, { volume: .5 });
 
   // logic for handling preparation phase
   useEffect(() => {
     if (isPreparing && prepareTime > 0) {
+      countdown();
       const timer = setInterval(() => {
         setPrepareTime((prevTime) => prevTime - 1);
       }, 1000);
-
       return () => clearInterval(timer);
     } else if (prepareTime === 0) {
+      go();
       setIsPreparing(false);
       setPrepareTime(defaults.prepareTime);
       setIsRunning(true);
     }
   }, [isPreparing, prepareTime]);
+
+  useEffect(() => {
+    if (isRunning) {
+      if (duration === 3) {
+        countdown();
+      }
+      if (duration === 2) {
+        countdown();
+      }
+      if (duration === 1) {
+        countdown();
+      }
+      if (duration === 0) {
+        go();
+      }
+    }
+  }, [duration, go, countdown, isRunning]);
 
   // logic for setting correct duration depending on stage
   useEffect(() => {
@@ -251,6 +272,15 @@ const Timer = () => {
         onComplete={nextStage}
         isGrowing={isGrowing}
         isSmoothColorTransition={false}
+        rotation={'counterclockwise'}
+        onUpdate={(remainingTime) => {
+          if (0 < remainingTime && remainingTime <= 3) {
+            countdown();
+          }
+          if (remainingTime === 0) {
+            go();
+          }
+        }}
       >
         {({ remainingTime }) => renderTime(remainingTime, stage, isPreparing, prepareTime)}
       </CountdownCircleTimer>
