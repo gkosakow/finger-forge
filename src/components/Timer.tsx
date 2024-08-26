@@ -84,7 +84,11 @@ const renderTime = (remainingTime: number, stage: TimerStage, isPreparing: boole
   };
 
   if (stage === 'Complete') {
-    return <div className='timer-label'>Complete!</div>;
+    return (
+      <div>
+        <div className='timer-label'>Session complete!</div>
+      </div>
+    )
   };
 
   if (remainingTime >= 60) {
