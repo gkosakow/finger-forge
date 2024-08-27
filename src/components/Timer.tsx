@@ -1,6 +1,6 @@
 import '../styles/Timer.css';
-import Hangboard from '../images/hangboard.svg';
-import Logo from '../images/logo.svg';
+// import Hangboard from '../images/hangboard.svg';
+// import Logo from '../images/logo.svg';
 import LogoNoHangboard from '../images/logo-no-hangboard.svg';
 import countdownSfx from '../sounds/countdown.mp3';
 import goSfx from '../sounds/go.mp3';
