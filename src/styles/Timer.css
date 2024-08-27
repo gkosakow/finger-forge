@@ -87,3 +87,26 @@ h1 {
   background-color: #4b5769;
   border-radius: 10px;
 }
+
+.timer-background-container {
+  position: relative;
+  width: 350px;
+  height: 350px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.timer-background-container .progress-circle {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+}
+
+.timer-background-container .countdown-circle-timer {
+  position: relative;
+  z-index: 2;
+}

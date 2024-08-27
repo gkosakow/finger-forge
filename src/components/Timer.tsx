@@ -1,5 +1,7 @@
 import '../styles/Timer.css';
 import Hangboard from '../images/hangboard.svg';
+import Logo from '../images/logo.svg';
+import LogoNoHangboard from '../images/logo-no-hangboard.svg';
 import countdownSfx from '../sounds/countdown.mp3';
 import goSfx from '../sounds/go.mp3';
 import useSound from 'use-sound';
@@ -11,6 +13,7 @@ import PauseRoundedIcon from '@mui/icons-material/PauseRounded';
 import StopRoundedIcon from '@mui/icons-material/StopRounded';
 import SkipNextRoundedIcon from '@mui/icons-material/SkipNextRounded';
 import RestartAltRoundedIcon from '@mui/icons-material/RestartAltRounded';
+import Progress from './Progress';
 
 type TimerStage = 'Not Started' | 'Hang' | 'Rest' | 'Complete';
 
@@ -73,12 +76,8 @@ const renderTime = (remainingTime: number, stage: TimerStage, isPreparing: boole
 
   if (stage === 'Not Started') {
     return (
-      <div>
-        <div className='timer-label'>
-          <div className='text' style={{ textAlign: 'center', color: 'white', fontWeight: 'bold' }}>HANGBOARD</div>
-          <img src={Hangboard} alt="Hangboard" width={400} height={110} />
-          <div className='text' style={{ textAlign: 'center', color: 'white', fontWeight: 'bold' }}>TIMER</div>
-        </div>
+      <div className='timer-content'>
+        <img src={LogoNoHangboard} alt="Hangboard" width={400} height={360} />
       </div>
     );
   };
@@ -244,7 +243,7 @@ const Timer = () => {
       setter('');
     } else {
       const numericValue = parseInt(value, 10);
-      if (!isNaN(numericValue) && numericValue > 0 && numericValue <= 100) {
+      if (!isNaN(numericValue) && numericValue > 0 && numericValue <= 45) {
         setter(numericValue);
       }
     }
@@ -252,29 +251,33 @@ const Timer = () => {
 
   return (
     <div className='timer-container'>
-      <CountdownCircleTimer
-        key={key}
-        isPlaying={isRunning}
-        duration={duration}
-        colors={['#FFFFFF', '#9999FF']}
-        colorsTime={[10, 0]}
-        trailColor='#4b5769'
-        size={350}
-        onComplete={nextStage}
-        isGrowing={isGrowing}
-        isSmoothColorTransition={false}
-        rotation={'counterclockwise'}
-        onUpdate={(remainingTime) => {
-          if (0 < remainingTime && remainingTime <= 3) {
-            countdown();
-          }
-          if (remainingTime === 0 && stage !== 'Not Started') {
-            go();
-          }
-        }}
-      >
-        {({ remainingTime }) => renderTime(remainingTime, stage, isPreparing, prepareTime)}
-      </CountdownCircleTimer>
+      <div className='timer-background-container'>
+        <Progress current={(currentInterval === 1 && stage === 'Not Started') ? 0 : currentInterval} max={intervals as number} />
+        <CountdownCircleTimer
+          key={key}
+          isPlaying={isRunning}
+          duration={duration}
+          colors={['#FFFFFF', '#9999FF']}
+          colorsTime={[10, 0]}
+          trailColor='#4b5769'
+          size={375}
+          onComplete={nextStage}
+          isGrowing={isGrowing}
+          isSmoothColorTransition={false}
+          rotation={'counterclockwise'}
+          onUpdate={(remainingTime) => {
+            if (0 < remainingTime && remainingTime <= 3) {
+              countdown();
+            }
+            if (remainingTime === 0 && stage !== 'Not Started') {
+              go();
+            }
+          }}
+        >
+          {({ remainingTime }) => renderTime(remainingTime, stage, isPreparing, prepareTime)}
+        </CountdownCircleTimer>
+      </div>
+
       <div className='timer-controls'>
         <IconButton
           onClick={() => {
@@ -326,7 +329,7 @@ const Timer = () => {
               placeholder='1'
               inputProps={{
                 min: 1,
-                max: 99,
+                max: 45,
                 style: { ...boxStyle, textAlign: 'center' },
               }}
               InputProps={{
