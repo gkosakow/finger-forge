@@ -1,6 +1,4 @@
 import '../styles/Timer.css';
-// import Hangboard from '../images/hangboard.svg';
-// import Logo from '../images/logo.svg';
 import LogoNoHangboard from '../images/logo-no-hangboard.svg';
 import countdownSfx from '../sounds/countdown.mp3';
 import goSfx from '../sounds/go.mp3';
@@ -10,7 +8,6 @@ import { IconButton, TextField } from '@mui/material';
 import { CountdownCircleTimer } from 'react-countdown-circle-timer';
 import PlayArrowRoundedIcon from '@mui/icons-material/PlayArrowRounded';
 import PauseRoundedIcon from '@mui/icons-material/PauseRounded';
-import StopRoundedIcon from '@mui/icons-material/StopRounded';
 import SkipNextRoundedIcon from '@mui/icons-material/SkipNextRounded';
 import RestartAltRoundedIcon from '@mui/icons-material/RestartAltRounded';
 import Progress from './Progress';
@@ -22,9 +19,9 @@ const defaults = {
   prepareTime: 3,
   duration: 0,
   hangMinutes: '00',
-  hangSeconds: '10',
+  hangSeconds: 10,
   restMinutes: '00',
-  restSeconds: '30',
+  restSeconds: 30,
 };
 
 const boxStyle = {
@@ -181,7 +178,6 @@ const Timer = () => {
     }
   };
 
-  // resets timer
   const reset = () => {
     setStage('Not Started');
     setIsPreparing(false);
@@ -225,12 +221,14 @@ const Timer = () => {
     setter: React.Dispatch<React.SetStateAction<number | string>>,
     value: string
   ) => {
-    if (value === '') {
+    const sanitizedValue = value.replace(/\D/g, '').slice(-2);
+
+    if (sanitizedValue === '') {
       setter('');
     } else {
-      const numericValue = parseInt(value, 10);
+      const numericValue = parseInt(sanitizedValue, 10);
       if (!isNaN(numericValue) && numericValue >= 0 && numericValue < 60) {
-        setter(numericValue);
+        setter(sanitizedValue.padStart(2, '0'));
       }
     }
   };
@@ -239,15 +237,31 @@ const Timer = () => {
     setter: React.Dispatch<React.SetStateAction<number | string>>,
     value: string
   ) => {
-    if (value === '') {
+    const sanitizedValue = value.replace(/\D/g, '').slice(-2);
+
+    if (sanitizedValue === '') {
       setter('');
     } else {
-      const numericValue = parseInt(value, 10);
+      const numericValue = parseInt(sanitizedValue, 10);
       if (!isNaN(numericValue) && numericValue > 0 && numericValue <= 45) {
         setter(numericValue);
       }
     }
   };
+
+  const preventNumberSymbols = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === '.' || e.key === 'e' || e.key === '-' || e.key === ' ') {
+      e.preventDefault();
+    }
+  };
+
+  const isValidIntervals = parseInt(intervals as string, 10) > 0;
+  const isValidHangTime = parseInt(hangTimeMinutes as string, 10) + parseInt(hangTimeSeconds as string, 10) > 0;
+  const isValidRestTime = parseInt(restTimeMinutes as string, 10) + parseInt(restTimeSeconds as string, 10) > 0;
+
+  const canStart = isValidIntervals && isValidHangTime && isValidRestTime;
+
+  console.log({ isValidHangTime, isValidRestTime, isValidIntervals, canStart });
 
   return (
     <div className='timer-container'>
@@ -285,25 +299,20 @@ const Timer = () => {
             reset();
           }}
           sx={buttonStyle}
-          disabled={stage === 'Not Started' || stage === 'Complete'}
+          disabled={stage === 'Not Started'}
         >
-          <StopRoundedIcon
-            sx={buttonIconStyle}
-          />
+          <RestartAltRoundedIcon sx={{ ...buttonIconStyle, padding: '4px 8px 8px 8px' }} />
         </IconButton>
         <IconButton
           onClick={(stage !== 'Complete') ? toggleTimer : reset}
           sx={buttonStyle}
-          disabled={isPreparing}
+          disabled={!canStart || isPreparing || stage === 'Complete'}
         >
-          {isRunning ? (
+          {isRunning ?
             <PauseRoundedIcon sx={buttonIconStyle} />
-          ) : (
-            stage === 'Complete' ?
-              <RestartAltRoundedIcon sx={{ ...buttonIconStyle, padding: '4px 8px 8px 8px' }} />
-              :
-              <PlayArrowRoundedIcon sx={buttonIconStyle} />
-          )}
+            :
+            <PlayArrowRoundedIcon sx={buttonIconStyle} />
+          }
         </IconButton>
         <IconButton
           onClick={skip}
@@ -330,6 +339,7 @@ const Timer = () => {
               inputProps={{
                 min: 1,
                 max: 45,
+                inputMode: 'numeric',
                 style: { ...boxStyle, textAlign: 'center' },
               }}
               InputProps={{
@@ -337,6 +347,8 @@ const Timer = () => {
               }}
               fullWidth
               disabled={disableTextFields}
+              onKeyDown={preventNumberSymbols}
+              required
             />
           </div>
         </div>
@@ -354,6 +366,7 @@ const Timer = () => {
               inputProps={{
                 min: 0,
                 max: 59,
+                inputMode: 'numeric',
                 style: { ...boxStyle, textAlign: 'end' },
               }}
               InputProps={{
@@ -361,6 +374,8 @@ const Timer = () => {
               }}
               fullWidth
               disabled={disableTextFields}
+              onKeyDown={preventNumberSymbols}
+              required
             />
             :
             <TextField
@@ -372,6 +387,7 @@ const Timer = () => {
               inputProps={{
                 min: 0,
                 max: 59,
+                inputMode: 'numeric',
                 style: { ...boxStyle, textAlign: 'start' },
               }}
               InputProps={{
@@ -379,6 +395,8 @@ const Timer = () => {
               }}
               fullWidth
               disabled={disableTextFields}
+              onKeyDown={preventNumberSymbols}
+              required
             />
           </div>
         </div>
@@ -396,6 +414,7 @@ const Timer = () => {
               inputProps={{
                 min: 0,
                 max: 59,
+                inputMode: 'numeric',
                 style: { ...boxStyle, textAlign: 'end' },
               }}
               InputProps={{
@@ -403,6 +422,8 @@ const Timer = () => {
               }}
               fullWidth
               disabled={disableTextFields}
+              onKeyDown={preventNumberSymbols}
+              required
             />
             :
             <TextField
@@ -414,6 +435,7 @@ const Timer = () => {
               inputProps={{
                 min: 0,
                 max: 59,
+                inputMode: 'numeric',
                 style: { ...boxStyle, textAlign: 'start' },
               }}
               InputProps={{
@@ -421,6 +443,8 @@ const Timer = () => {
               }}
               fullWidth
               disabled={disableTextFields}
+              onKeyDown={preventNumberSymbols}
+              required
             />
           </div>
         </div>
