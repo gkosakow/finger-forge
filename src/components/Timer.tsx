@@ -3,16 +3,15 @@ import LogoNoHangboard from '../images/logo-no-hangboard.svg';
 import countdownSfx from '../sounds/countdown.mp3';
 import goSfx from '../sounds/go.mp3';
 import useSound from 'use-sound';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { IconButton, TextField } from '@mui/material';
 import { CountdownCircleTimer } from 'react-countdown-circle-timer';
 import PlayArrowRoundedIcon from '@mui/icons-material/PlayArrowRounded';
 import PauseRoundedIcon from '@mui/icons-material/PauseRounded';
 import SkipNextRoundedIcon from '@mui/icons-material/SkipNextRounded';
 import RestartAltRoundedIcon from '@mui/icons-material/RestartAltRounded';
-import AirRoundedIcon from '@mui/icons-material/AirRounded';
-import Crimp from '/logo-hand-gray.svg';
 import Progress from './Progress';
+import NoSleep from 'nosleep.js';
 
 type TimerStage = 'Not Started' | 'Hang' | 'Rest' | 'Complete';
 
@@ -136,6 +135,20 @@ const Timer = () => {
   const [countdown] = useSound(countdownSfx, { volume: .5 });
   const [go] = useSound(goSfx, { volume: .5 });
 
+  const noSleep = useRef(new NoSleep());
+
+  const enableNoSleep = () => {
+    noSleep.current.enable();
+  };
+
+  const disableNoSleep = () => {
+    noSleep.current.disable();
+  };
+
+  useEffect(() => {
+    loadSettingsFromLocalStorage();
+  }, []);
+
   useEffect(() => {
     if (isPreparing && prepareTime > 0) {
       countdown();
@@ -148,8 +161,16 @@ const Timer = () => {
       setIsPreparing(false);
       setPrepareTime(defaults.prepareTime);
       setIsRunning(true);
+
+      enableNoSleep();
     }
   }, [isPreparing, prepareTime]);
+
+  useEffect(() => {
+    if (!isRunning) {
+      disableNoSleep();
+    }
+  }, [isRunning]);
 
   useEffect(() => {
     switch (stage) {
@@ -176,21 +197,29 @@ const Timer = () => {
     if (!isRunning && stage !== 'Not Started') {
       setIsPreparing(true);
     } else {
+      saveSettingsToLocalStorage();
       setIsRunning((isRunning) => !isRunning);
     }
   };
 
   const reset = () => {
+    loadSettingsFromLocalStorage();
+
     setStage('Not Started');
     setIsPreparing(false);
     setPrepareTime(defaults.prepareTime);
     setKey((prevKey) => prevKey + 1);
     setCurrentInterval(1);
-    setDuration(defaults.duration);
+    setDuration(calculateDuration(hangTimeMinutes, hangTimeSeconds));
+
+    disableNoSleep();
   };
+
 
   const stop = () => {
     setIsRunning(false);
+
+    disableNoSleep();
   };
 
   const nextStage = () => {
@@ -254,6 +283,28 @@ const Timer = () => {
   const preventNumberSymbols = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === '.' || e.key === 'e' || e.key === '-' || e.key === ' ') {
       e.preventDefault();
+    }
+  };
+
+  const saveSettingsToLocalStorage = () => {
+    localStorage.setItem('timerSettings', JSON.stringify({
+      intervals,
+      hangTimeMinutes,
+      hangTimeSeconds,
+      restTimeMinutes,
+      restTimeSeconds,
+    }));
+  };
+
+  const loadSettingsFromLocalStorage = () => {
+    const savedSettings = localStorage.getItem('timerSettings');
+    if (savedSettings) {
+      const { intervals, hangTimeMinutes, hangTimeSeconds, restTimeMinutes, restTimeSeconds } = JSON.parse(savedSettings);
+      setIntervals(intervals);
+      setHangTimeMinutes(hangTimeMinutes);
+      setHangTimeSeconds(hangTimeSeconds);
+      setRestTimeMinutes(restTimeMinutes);
+      setRestTimeSeconds(restTimeSeconds);
     }
   };
 
