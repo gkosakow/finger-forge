@@ -110,3 +110,16 @@ h1 {
   position: relative;
   z-index: 2;
 }
+
+.current-action-label {
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  align-items: center;
+  gap: 5px;
+}
+
+.hang-icon {
+  height: 1.2rem;
+  width: 1.2rem;
+}
