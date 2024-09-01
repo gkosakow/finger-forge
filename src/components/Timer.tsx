@@ -10,6 +10,8 @@ import PlayArrowRoundedIcon from '@mui/icons-material/PlayArrowRounded';
 import PauseRoundedIcon from '@mui/icons-material/PauseRounded';
 import SkipNextRoundedIcon from '@mui/icons-material/SkipNextRounded';
 import RestartAltRoundedIcon from '@mui/icons-material/RestartAltRounded';
+import AirRoundedIcon from '@mui/icons-material/AirRounded';
+import Crimp from '/logo-hand-gray.svg';
 import Progress from './Progress';
 
 type TimerStage = 'Not Started' | 'Hang' | 'Rest' | 'Complete';
@@ -260,8 +262,6 @@ const Timer = () => {
   const isValidRestTime = parseInt(restTimeMinutes as string, 10) + parseInt(restTimeSeconds as string, 10) > 0;
 
   const canStart = isValidIntervals && isValidHangTime && isValidRestTime;
-
-  console.log({ isValidHangTime, isValidRestTime, isValidIntervals, canStart });
 
   return (
     <div className='timer-container'>
