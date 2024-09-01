@@ -161,8 +161,6 @@ const Timer = () => {
       setIsPreparing(false);
       setPrepareTime(defaults.prepareTime);
       setIsRunning(true);
-
-      enableNoSleep();
     }
   }, [isPreparing, prepareTime]);
 
@@ -199,6 +197,7 @@ const Timer = () => {
     } else {
       saveSettingsToLocalStorage();
       setIsRunning((isRunning) => !isRunning);
+      enableNoSleep();
     }
   };
 
