@@ -43,6 +43,11 @@ h1 {
   width: 70dvw;
 }
 
+.preset-container {
+  width: 70dvw;
+  margin-bottom: 20px;
+}
+
 .timer-container {
   display: flex;
   flex-direction: column;

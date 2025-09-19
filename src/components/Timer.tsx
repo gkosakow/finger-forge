@@ -4,7 +4,7 @@ import countdownSfx from '../sounds/countdown.mp3';
 import goSfx from '../sounds/go.mp3';
 import useSound from 'use-sound';
 import { useEffect, useRef, useState } from 'react';
-import { IconButton, TextField } from '@mui/material';
+import { IconButton, TextField, Select, MenuItem, FormControl, InputLabel } from '@mui/material';
 import { CountdownCircleTimer } from 'react-countdown-circle-timer';
 import PlayArrowRoundedIcon from '@mui/icons-material/PlayArrowRounded';
 import PauseRoundedIcon from '@mui/icons-material/PauseRounded';
@@ -23,6 +23,66 @@ const defaults = {
   hangSeconds: 10,
   restMinutes: '00',
   restSeconds: 30,
+};
+
+// Preset configurations for common hangboard training routines
+const presets = {
+  custom: {
+    name: 'Custom',
+    intervals: 3,
+    hangMinutes: '00',
+    hangSeconds: 10,
+    restMinutes: '00',
+    restSeconds: 30,
+  },
+  beginner: {
+    name: 'Beginner',
+    intervals: 5,
+    hangMinutes: '00',
+    hangSeconds: 10,
+    restMinutes: '00',
+    restSeconds: 50,
+  },
+  intermediate: {
+    name: 'Intermediate',
+    intervals: 6,
+    hangMinutes: '00',
+    hangSeconds: 10,
+    restMinutes: '00',
+    restSeconds: 20,
+  },
+  advanced: {
+    name: 'Advanced',
+    intervals: 7,
+    hangMinutes: '00',
+    hangSeconds: 10,
+    restMinutes: '00',
+    restSeconds: 15,
+  },
+  maxStrength: {
+    name: 'Max Strength',
+    intervals: 5,
+    hangMinutes: '00',
+    hangSeconds: 12,
+    restMinutes: '03',
+    restSeconds: 0,
+  },
+  endurance: {
+    name: 'Endurance',
+    intervals: 8,
+    hangMinutes: '00',
+    hangSeconds: 15,
+    restMinutes: '00',
+    restSeconds: 45,
+  },
+  repeaters: {
+    name: 'Repeaters',
+    intervals: 10,
+    hangMinutes: '00',
+    hangSeconds: 7,
+    restMinutes: '00',
+    restSeconds: 3,
+  },
 };
 
 const boxStyle = {
@@ -123,6 +183,7 @@ const Timer = () => {
   const [isPreparing, setIsPreparing] = useState<boolean>(false);
   const [prepareTime, setPrepareTime] = useState<number>(defaults.prepareTime);
   const [currentInterval, setCurrentInterval] = useState<number>(1);
+  const [selectedPreset, setSelectedPreset] = useState<string>('custom');
 
   const [intervals, setIntervals] = useState<number | string>(defaults.intervals);
   const [hangTimeMinutes, setHangTimeMinutes] = useState<number | string>(defaults.hangMinutes);
@@ -261,6 +322,11 @@ const Timer = () => {
         setter(sanitizedValue.padStart(2, '0'));
       }
     }
+    
+    // Switch to custom preset when manually changing values
+    if (selectedPreset !== 'custom') {
+      setSelectedPreset('custom');
+    }
   };
 
   const handleIntervalChange = (
@@ -277,12 +343,29 @@ const Timer = () => {
         setter(numericValue);
       }
     }
+    
+    // Switch to custom preset when manually changing values
+    if (selectedPreset !== 'custom') {
+      setSelectedPreset('custom');
+    }
   };
 
   const preventNumberSymbols = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === '.' || e.key === 'e' || e.key === '-' || e.key === ' ') {
       e.preventDefault();
     }
+  };
+
+  const handlePresetChange = (presetKey: string) => {
+    if (presetKey !== 'custom') {
+      const preset = presets[presetKey as keyof typeof presets];
+      setIntervals(preset.intervals);
+      setHangTimeMinutes(preset.hangMinutes);
+      setHangTimeSeconds(preset.hangSeconds);
+      setRestTimeMinutes(preset.restMinutes);
+      setRestTimeSeconds(preset.restSeconds);
+    }
+    setSelectedPreset(presetKey);
   };
 
   const saveSettingsToLocalStorage = () => {
@@ -292,18 +375,22 @@ const Timer = () => {
       hangTimeSeconds,
       restTimeMinutes,
       restTimeSeconds,
+      selectedPreset,
     }));
   };
 
   const loadSettingsFromLocalStorage = () => {
     const savedSettings = localStorage.getItem('timerSettings');
     if (savedSettings) {
-      const { intervals, hangTimeMinutes, hangTimeSeconds, restTimeMinutes, restTimeSeconds } = JSON.parse(savedSettings);
+      const { intervals, hangTimeMinutes, hangTimeSeconds, restTimeMinutes, restTimeSeconds, selectedPreset } = JSON.parse(savedSettings);
       setIntervals(intervals);
       setHangTimeMinutes(hangTimeMinutes);
       setHangTimeSeconds(hangTimeSeconds);
       setRestTimeMinutes(restTimeMinutes);
       setRestTimeSeconds(restTimeSeconds);
+      if (selectedPreset) {
+        setSelectedPreset(selectedPreset);
+      }
     }
   };
 
@@ -373,6 +460,43 @@ const Timer = () => {
             sx={buttonIconStyle}
           />
         </IconButton>
+      </div>
+      <div className='preset-container'>
+        <FormControl fullWidth>
+          <InputLabel id="preset-select-label" sx={{ color: 'white', '&.Mui-focused': { color: 'white' } }}>
+            Preset
+          </InputLabel>
+          <Select
+            labelId="preset-select-label"
+            value={selectedPreset}
+            label="Preset"
+            onChange={(e) => handlePresetChange(e.target.value)}
+            disabled={disableTextFields}
+            sx={{
+              color: 'white',
+              backgroundColor: '#4b5769',
+              borderRadius: '10px',
+              '& .MuiOutlinedInput-notchedOutline': {
+                borderColor: '#4b5769',
+              },
+              '&:hover .MuiOutlinedInput-notchedOutline': {
+                borderColor: '#9999FF',
+              },
+              '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                borderColor: '#9999FF',
+              },
+              '& .MuiSvgIcon-root': {
+                color: 'white',
+              }
+            }}
+          >
+            {Object.entries(presets).map(([key, preset]) => (
+              <MenuItem key={key} value={key} sx={{ color: '#303946' }}>
+                {preset.name}
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
       </div>
       <div className='timer-settings'>
         <div className='setting'>
