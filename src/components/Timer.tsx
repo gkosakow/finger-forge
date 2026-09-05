@@ -2,7 +2,7 @@ import '../styles/Timer.css';
 import countdownSfx from '../sounds/countdown.mp3';
 import goSfx from '../sounds/go.mp3';
 import useSound from 'use-sound';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import NoSleep from 'nosleep.js';
 import { Check, Pause, Play, RotateCcw, SkipForward } from 'lucide-react';
 
@@ -21,6 +21,9 @@ const SEGMENT_RADIUS = 47;
 const SEGMENT_CIRCUMFERENCE = 2 * Math.PI * SEGMENT_RADIUS;
 const ARC_RADIUS = 38;
 const ARC_CIRCUMFERENCE = 2 * Math.PI * ARC_RADIUS;
+const SUB_LABEL_HALF_CAP = 1.2;
+const ARROW_WIDTH = 2.72;
+const FALLBACK_WORD_GAP = 3.7;
 
 const calculateDuration = (minutes: number | string, seconds: number | string) => {
   const parsedMinutes = typeof minutes === 'string' ? parseInt(minutes, 10) : minutes;
@@ -38,6 +41,14 @@ const formatClock = (totalSeconds: number) => {
   const seconds = (totalSeconds % 60).toString().padStart(2, '0');
 
   return `${minutes}:${seconds}`;
+};
+
+const formatDuration = (totalSeconds: number) => {
+  if (totalSeconds < 60) {
+    return `${totalSeconds}S`;
+  }
+
+  return formatClock(totalSeconds);
 };
 
 const formatRemaining = (totalSeconds: number) => {
@@ -103,6 +114,7 @@ const Timer = () => {
   const [endsAt, setEndsAt] = useState<number | null>(null);
   const [resyncKey, setResyncKey] = useState<number>(0);
   const [arcOffset, setArcOffset] = useState<number>(0);
+  const [arrow, setArrow] = useState<{ x: number; y: number; angle: number; textOffset: number } | null>(null);
   const [currentInterval, setCurrentInterval] = useState<number>(1);
 
   const [intervals, setIntervals] = useState<number | string>(defaults.intervals);
@@ -115,6 +127,8 @@ const Timer = () => {
   const [playGo] = useSound(goSfx, { volume: 0.5 });
 
   const noSleep = useRef(new NoSleep());
+  const subPath = useRef<SVGPathElement>(null);
+  const subText = useRef<SVGTextElement>(null);
   const previousRemaining = useRef(0);
 
   const enableNoSleep = () => {
@@ -365,7 +379,6 @@ const Timer = () => {
   const litSegments = stage === 'Not Started' || isPreparing ? 0 : currentInterval;
   const isIdle = stage === 'Not Started';
 
-
   const isResting = stage === 'Rest' && !isPreparing;
   const arcColor = isResting ? '#5A6155' : '#E9FF00';
   const accentClass = isResting ? 'is-resting' : '';
@@ -386,6 +399,8 @@ const Timer = () => {
     return stage.toUpperCase();
   };
 
+  const isFinalHang = stage === 'Hang' && currentInterval === totalSets;
+
   const subLabel = () => {
     if (isPreparing) {
       return '';
@@ -400,10 +415,14 @@ const Timer = () => {
     }
 
     if (stage === 'Rest') {
-      return `NEXT · HANG ${formatClock(hangDuration)}`;
+      return `HANG ${formatDuration(hangDuration)}`;
     }
 
-    return '';
+    if (isFinalHang) {
+      return 'FINISH';
+    }
+
+    return `REST ${formatDuration(restDuration)}`;
   };
 
   const centreValue = () => {
@@ -419,96 +438,238 @@ const Timer = () => {
   };
 
   const isMutedLabel = stage === 'Not Started' || isResting;
+  const subLabelText = subLabel();
+  const showNextArrow = !isPreparing && (stage === 'Hang' || stage === 'Rest');
+
+  useLayoutEffect(() => {
+    const pathElement = subPath.current;
+    const textElement = subText.current;
+
+    if (!pathElement || !textElement || !showNextArrow) {
+      setArrow(null);
+
+      return;
+    }
+
+    let cancelled = false;
+
+    const measure = () => {
+      if (cancelled) {
+        return;
+      }
+
+      const total = pathElement.getTotalLength();
+      const width = textElement.getComputedTextLength();
+      const spaceIndex = subLabelText.indexOf(' ');
+      let wordGap = FALLBACK_WORD_GAP;
+
+      if (spaceIndex > 0 && spaceIndex < subLabelText.length - 1) {
+        const before = textElement.getEndPositionOfChar(spaceIndex - 1);
+        const after = textElement.getStartPositionOfChar(spaceIndex + 1);
+
+        wordGap = Math.hypot(after.x - before.x, after.y - before.y);
+      }
+
+      const textOffset = total / 2 + (ARROW_WIDTH + wordGap) / 2;
+      const at = Math.max(0, textOffset - width / 2 - wordGap - ARROW_WIDTH / 2);
+      const point = pathElement.getPointAtLength(at);
+      const ahead = pathElement.getPointAtLength(Math.min(total, at + 0.5));
+      const toCentre = Math.atan2(50 - point.y, 50 - point.x);
+
+      setArrow({
+        x: point.x + Math.cos(toCentre) * SUB_LABEL_HALF_CAP,
+        y: point.y + Math.sin(toCentre) * SUB_LABEL_HALF_CAP,
+        angle: (Math.atan2(ahead.y - point.y, ahead.x - point.x) * 180) / Math.PI,
+        textOffset,
+      });
+    };
+
+    measure();
+    document.fonts.ready.then(measure);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [subLabelText, showNextArrow]);
 
   return (
     <div className="timer">
-      <header className="timer-header">
-        <div className="wordmark">Finger Forge</div>
-      </header>
-
-      <div className="timer-stage">
-        <div className={`timer-ring ${accentClass}`}>
-          <svg className="ring-rings" viewBox="0 0 100 100">
-            <circle
-              cx="50"
-              cy="50"
-              r={SEGMENT_RADIUS}
-              fill="none"
-              stroke="#2A2D25"
-              strokeWidth="3"
-              strokeDasharray={`${segments.dash} ${segments.gap}`}
-              strokeLinecap="round"
-              className="segment-track"
-            />
-            {segments.offsets.slice(0, litSegments).map((offset, index) => {
-              return (
-                <circle
-                  key={index}
-                  cx="50"
-                  cy="50"
-                  r={SEGMENT_RADIUS}
-                  fill="none"
-                  stroke="#E9FF00"
-                  strokeWidth="3"
-                  strokeDasharray={`${segments.dash} ${SEGMENT_CIRCUMFERENCE}`}
-                  strokeDashoffset={offset}
-                  strokeLinecap="round"
-                  className="segment-lit"
+      <div className="timer-top">
+        <header className="timer-header">
+          <div className="wordmark">Finger Forge</div>
+        </header>
+        {isComplete ? (
+          <div className="timer-settings">
+            <div className="setting">
+              <span className="setting-label">Sets</span>
+              <span className="setting-value">{totalSets}</span>
+            </div>
+            <div className="setting-divider" />
+            <div className="setting">
+              <span className="setting-label">Time on</span>
+              <span className="setting-value is-lit">{formatClock(hangingSeconds)}</span>
+            </div>
+            <div className="setting-divider" />
+            <div className="setting">
+              <span className="setting-label">Total</span>
+              <span className="setting-value">{formatClock(sessionSeconds)}</span>
+            </div>
+          </div>
+        ) : (
+          <div className={`timer-settings ${isEditable ? 'is-editable' : ''}`}>
+            <div className="setting">
+              <span className="setting-label">Sets</span>
+              <input
+                className="setting-input"
+                inputMode="numeric"
+                value={intervals}
+                placeholder="1"
+                disabled={!isEditable}
+                onChange={(event) => handleIntervalChange(setIntervals, event.target.value)}
+              />
+            </div>
+            <div className="setting-divider" />
+            <div className="setting">
+              <span className="setting-label">Hang</span>
+              <span className="setting-pair">
+                <input
+                  className="setting-input"
+                  inputMode="numeric"
+                  value={hangTimeMinutes}
+                  placeholder="MM"
+                  disabled={!isEditable}
+                  onChange={(event) => handleTimeChange(setHangTimeMinutes, event.target.value)}
                 />
-              );
-            })}
-            <circle cx="50" cy="50" r={ARC_RADIUS} fill="none" stroke="#191B16" strokeWidth="6.5" />
-            {isComplete ? (
-              <circle cx="50" cy="50" r={ARC_RADIUS} fill="none" stroke="#E9FF00" strokeWidth="6.5" className="arc-lit" />
-            ) : isIdle ? null : (
+                :
+                <input
+                  className="setting-input"
+                  inputMode="numeric"
+                  value={hangTimeSeconds}
+                  placeholder="SS"
+                  disabled={!isEditable}
+                  onChange={(event) => handleTimeChange(setHangTimeSeconds, event.target.value)}
+                />
+              </span>
+            </div>
+            <div className="setting-divider" />
+            <div className="setting">
+              <span className="setting-label">Rest</span>
+              <span className="setting-pair">
+                <input
+                  className="setting-input"
+                  inputMode="numeric"
+                  value={restTimeMinutes}
+                  placeholder="MM"
+                  disabled={!isEditable}
+                  onChange={(event) => handleTimeChange(setRestTimeMinutes, event.target.value)}
+                />
+                :
+                <input
+                  className="setting-input"
+                  inputMode="numeric"
+                  value={restTimeSeconds}
+                  placeholder="SS"
+                  disabled={!isEditable}
+                  onChange={(event) => handleTimeChange(setRestTimeSeconds, event.target.value)}
+                />
+              </span>
+            </div>
+          </div>
+        )}
+      </div>
+
+      <div className={`timer-ring ${accentClass}`}>
+        <svg className="ring-rings" viewBox="0 0 100 100">
+          <circle
+            cx="50"
+            cy="50"
+            r={SEGMENT_RADIUS}
+            fill="none"
+            stroke="#191B16"
+            strokeWidth="3"
+            strokeDasharray={`${segments.dash} ${segments.gap}`}
+            strokeLinecap="round"
+            className="segment-track"
+          />
+          {segments.offsets.slice(0, litSegments).map((offset, index) => {
+            return (
               <circle
-                key={`${stageKey}-${resyncKey}`}
+                key={index}
                 cx="50"
                 cy="50"
-                r={ARC_RADIUS}
+                r={SEGMENT_RADIUS}
                 fill="none"
-                stroke={arcColor}
-                strokeWidth="6.5"
-                strokeDasharray={ARC_CIRCUMFERENCE}
+                stroke="#E9FF00"
+                strokeWidth="3"
+                strokeDasharray={`${segments.dash} ${SEGMENT_CIRCUMFERENCE}`}
+                strokeDashoffset={offset}
                 strokeLinecap="round"
-                className={`arc-sweep ${stage === 'Rest' ? 'is-growing' : ''} ${isResting ? '' : 'arc-lit'}`}
-                style={{
-                  '--arc-circumference': ARC_CIRCUMFERENCE,
-                  '--arc-duration': `${stageDuration}s`,
-                  animationDelay: `-${arcOffset}s`,
-                  animationPlayState: isRunning ? 'running' : 'paused',
-                } as React.CSSProperties}
+                className="segment-lit"
               />
-            )}
-          </svg>
+            );
+          })}
+          <circle cx="50" cy="50" r={ARC_RADIUS} fill="none" stroke="#191B16" strokeWidth="6.5" />
+          {isComplete ? (
+            <circle cx="50" cy="50" r={ARC_RADIUS} fill="none" stroke="#E9FF00" strokeWidth="6.5" className="arc-lit" />
+          ) : isIdle ? null : (
+            <circle
+              key={`${stageKey}-${resyncKey}`}
+              cx="50"
+              cy="50"
+              r={ARC_RADIUS}
+              fill="none"
+              stroke={arcColor}
+              strokeWidth="6.5"
+              strokeDasharray={ARC_CIRCUMFERENCE}
+              strokeLinecap="round"
+              className={`arc-sweep ${stage === 'Hang' ? 'is-growing' : ''} ${isResting ? '' : 'arc-lit'}`}
+              style={{
+                '--arc-circumference': ARC_CIRCUMFERENCE,
+                '--arc-duration': `${stageDuration}s`,
+                animationDelay: `-${arcOffset}s`,
+                animationPlayState: isRunning ? 'running' : 'paused',
+              } as React.CSSProperties}
+            />
+          )}
+        </svg>
 
-          <svg className="ring-labels" viewBox="0 0 100 100">
-            <defs>
-              <path id="stage-arc" d="M 22 50 A 28 28 0 0 1 78 50" fill="none" />
-              <path id="sub-arc" d="M 17 50 A 33 33 0 0 0 83 50" fill="none" />
-            </defs>
-            <text className={`stage-label ${isMutedLabel ? 'is-muted' : ''}`} fontSize="4.6" fontWeight="800" letterSpacing="2.2">
-              <textPath href="#stage-arc" startOffset="50%" textAnchor="middle">{stageLabel()}</textPath>
-            </text>
-            <text className={`sub-label ${isComplete ? 'is-lit' : ''}`} fontSize="3.4" fontWeight="700" letterSpacing="1.4">
-              <textPath href="#sub-arc" startOffset="50%" textAnchor="middle">{subLabel()}</textPath>
-            </text>
-          </svg>
+        <svg className="ring-labels" viewBox="0 0 100 100">
+          <defs>
+            <path id="stage-arc" d="M 23.7 50 A 26.3 26.3 0 0 1 76.3 50" fill="none" />
+            <path ref={subPath} id="sub-arc" d="M 20.3 50 A 29.7 29.7 0 0 0 79.7 50" fill="none" />
+          </defs>
+          <text className={`stage-label ${isMutedLabel ? 'is-muted' : ''}`} fontSize="4.6" fontWeight="800" letterSpacing="2.2">
+            <textPath href="#stage-arc" startOffset="50%" textAnchor="middle">{stageLabel()}</textPath>
+          </text>
+          <text ref={subText} className={`sub-label ${isComplete ? 'is-lit' : ''}`} fontSize="3.4" fontWeight="700" letterSpacing="1.4">
+            <textPath href="#sub-arc" startOffset={showNextArrow && arrow ? arrow.textOffset : '50%'} textAnchor="middle">{subLabelText}</textPath>
+          </text>
+          {showNextArrow && arrow ? (
+            <g
+              className="sub-arrow"
+              transform={`translate(${arrow.x} ${arrow.y}) rotate(${arrow.angle}) scale(0.16) translate(-12 -12)`}
+            >
+              <path d="M5 12h14" />
+              <path d="m12 5 7 7-7 7" />
+            </g>
+          ) : null}
+        </svg>
 
-          <div className="ring-centre">
-            {isComplete ? (
-              <div className="centre-check"><Check size={72} strokeWidth={1.5} /></div>
-            ) : (
-              <div
-                className={`centre-value ${isPreparing ? 'is-lit' : ''} ${isResting ? 'is-resting' : ''}`}
-                style={{ fontSize: `${centreFontSize(centreValue())}px` }}
-              >
-                {centreValue()}
-              </div>
-            )}
-          </div>
+        <div className="ring-centre">
+          {isComplete ? (
+            <div className="centre-check"><Check size={72} strokeWidth={1.5} /></div>
+          ) : (
+            <div
+              className={`centre-value ${isPreparing ? 'is-lit' : ''} ${isResting ? 'is-resting' : ''}`}
+              style={{ fontSize: `${centreFontSize(centreValue())}px` }}
+            >
+              {centreValue()}
+            </div>
+          )}
         </div>
+      </div>
 
+      <div className="timer-bottom">
         {isComplete ? (
           <div className="timer-controls">
             <button type="button" className="control-again" onClick={reset}>
@@ -546,84 +707,6 @@ const Timer = () => {
         )}
       </div>
 
-      {isComplete ? (
-        <div className="timer-settings">
-          <div className="setting">
-            <span className="setting-label">Sets</span>
-            <span className="setting-value">{totalSets}</span>
-          </div>
-          <div className="setting-divider" />
-          <div className="setting">
-            <span className="setting-label">Time on</span>
-            <span className="setting-value is-lit">{formatClock(hangingSeconds)}</span>
-          </div>
-          <div className="setting-divider" />
-          <div className="setting">
-            <span className="setting-label">Total</span>
-            <span className="setting-value">{formatClock(sessionSeconds)}</span>
-          </div>
-        </div>
-      ) : (
-        <div className={`timer-settings ${isEditable ? 'is-editable' : ''}`}>
-          <div className="setting">
-            <span className="setting-label">Sets</span>
-            <input
-              className="setting-input"
-              inputMode="numeric"
-              value={intervals}
-              placeholder="1"
-              disabled={!isEditable}
-              onChange={(event) => handleIntervalChange(setIntervals, event.target.value)}
-            />
-          </div>
-          <div className="setting-divider" />
-          <div className="setting">
-            <span className="setting-label">Hang</span>
-            <span className="setting-pair">
-              <input
-                className="setting-input"
-                inputMode="numeric"
-                value={hangTimeMinutes}
-                placeholder="MM"
-                disabled={!isEditable}
-                onChange={(event) => handleTimeChange(setHangTimeMinutes, event.target.value)}
-              />
-              :
-              <input
-                className="setting-input"
-                inputMode="numeric"
-                value={hangTimeSeconds}
-                placeholder="SS"
-                disabled={!isEditable}
-                onChange={(event) => handleTimeChange(setHangTimeSeconds, event.target.value)}
-              />
-            </span>
-          </div>
-          <div className="setting-divider" />
-          <div className="setting">
-            <span className="setting-label">Rest</span>
-            <span className="setting-pair">
-              <input
-                className="setting-input"
-                inputMode="numeric"
-                value={restTimeMinutes}
-                placeholder="MM"
-                disabled={!isEditable}
-                onChange={(event) => handleTimeChange(setRestTimeMinutes, event.target.value)}
-              />
-              :
-              <input
-                className="setting-input"
-                inputMode="numeric"
-                value={restTimeSeconds}
-                placeholder="SS"
-                disabled={!isEditable}
-                onChange={(event) => handleTimeChange(setRestTimeSeconds, event.target.value)}
-              />
-            </span>
-          </div>
-        </div>
-      )}
     </div>
   );
 };
