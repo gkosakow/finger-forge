@@ -1,125 +1,275 @@
-h1 {
-  text-align: center;
-  margin-bottom: 10px;
-  margin-top: 40px;
-  font-size: x-large;
+.timer {
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+  max-width: 430px;
+  margin: 0 auto;
+  padding: max(24px, env(safe-area-inset-top)) 22px max(24px, env(safe-area-inset-bottom)) 22px;
 }
 
-.timer-label {
+.timer-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 24px 0;
+}
+
+.wordmark {
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: #7C817A;
+}
+
+.timer-stage {
   display: flex;
   flex-direction: column;
   align-items: center;
-  font-size: x-large;
+  justify-content: center;
+  flex-grow: 1;
+  gap: 46px;
 }
 
-.text {
-  color: #aaa;
+.timer-ring {
+  position: relative;
+  width: min(330px, 86vw);
+  aspect-ratio: 1;
 }
 
-.value {
-  font-size: 6rem;
-  font-weight: semibold;
+.ring-rings,
+.ring-labels {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
 }
 
-.info {
-  max-width: 360px;
-  margin: 40px auto 0;
-  text-align: center;
-  font-size: 16px;
+.ring-rings {
+  transform: rotate(-90deg);
+}
+
+.segment-lit {
+  filter: drop-shadow(0 0 4px rgba(233, 255, 0, 0.3));
+}
+
+.arc-lit {
+  filter: drop-shadow(0 0 6px rgba(233, 255, 0, 0.38));
+}
+
+.arc-sweep {
+  animation: arc-shrink var(--arc-duration) linear forwards;
+}
+
+.arc-sweep.is-growing {
+  animation-name: arc-grow;
+}
+
+@keyframes arc-shrink {
+  from {
+    stroke-dashoffset: 0;
+  }
+
+  to {
+    stroke-dashoffset: var(--arc-circumference);
+  }
+}
+
+@keyframes arc-grow {
+  from {
+    stroke-dashoffset: var(--arc-circumference);
+  }
+
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+.stage-label {
+  fill: #E9FF00;
+  filter: drop-shadow(0 0 5px rgba(233, 255, 0, 0.34));
+}
+
+.stage-label.is-muted {
+  fill: #9BA394;
+  filter: none;
+}
+
+.sub-label {
+  fill: #6E7468;
+  font-family: 'Azeret Mono', ui-monospace, monospace;
+}
+
+.sub-label.is-lit {
+  fill: #E9FF00;
+  font-family: Archivo, system-ui, sans-serif;
+  filter: drop-shadow(0 0 5px rgba(233, 255, 0, 0.34));
+}
+
+.ring-centre {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.centre-value {
+  font-family: 'Azeret Mono', ui-monospace, monospace;
+  font-weight: 500;
+  line-height: 0.86;
+  letter-spacing: -0.06em;
+  font-variant-numeric: tabular-nums;
+}
+
+.centre-value.is-lit {
+  color: #E9FF00;
+  text-shadow: 0 0 24px rgba(233, 255, 0, 0.3);
+}
+
+.centre-value.is-resting {
+  color: #C9CFC4;
+  font-weight: 300;
+}
+
+.centre-check {
+  color: #E9FF00;
+  display: flex;
 }
 
 .timer-controls {
   display: flex;
+  align-items: center;
+  gap: 30px;
+}
+
+.control-secondary,
+.control-primary,
+.control-again {
+  display: flex;
+  align-items: center;
   justify-content: center;
-  width: 70dvw;
+  border: none;
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.control-secondary {
+  width: 52px;
+  height: 52px;
+  background: #17190F;
+  color: #9BA394;
+}
+
+.control-primary {
+  width: 88px;
+  height: 88px;
+  background: #E9FF00;
+  color: #060706;
+  box-shadow: 0 0 44px rgba(233, 255, 0, 0.32);
+}
+
+.control-again {
+  gap: 10px;
+  height: 62px;
+  padding: 0 30px;
+  background: #E9FF00;
+  color: #060706;
+  font-family: Archivo, system-ui, sans-serif;
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  box-shadow: 0 0 44px rgba(233, 255, 0, 0.28);
+}
+
+.control-secondary:disabled {
+  background: #101107;
+  color: #3B3F37;
+  cursor: not-allowed;
+}
+
+.control-primary:disabled {
+  background: #2B2F1D;
+  color: #6E7468;
+  box-shadow: none;
+  cursor: not-allowed;
 }
 
 .timer-settings {
   display: flex;
-  flex-direction: row;
-  justify-content: center;
   align-items: center;
-  gap: 10px;
-  width: 70dvw;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: #101208;
 }
 
-.timer-container {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: space-evenly;
-  height: 100dvh;
-}
-
-.timer-container h1 {
-  margin: 10px;
+.timer-settings.is-editable {
+  border-color: #23261B;
 }
 
 .setting {
   display: flex;
   flex-direction: column;
   align-items: center;
-  width: 100%;
+  gap: 3px;
+  flex: 1 1 0;
+}
+
+.setting-divider {
+  flex: 0 0 1px;
+  width: 1px;
+  height: 30px;
+  background: #23261B;
 }
 
 .setting-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: #6E7468;
+}
+
+.setting-value,
+.setting-input {
+  font-family: 'Azeret Mono', ui-monospace, monospace;
+  font-size: 20px;
+  font-weight: 500;
+  color: #F4F5F2;
+}
+
+.setting-value.is-lit {
+  color: #E9FF00;
+}
+
+.setting-pair {
   display: flex;
-  flex-direction: column;
+  align-items: center;
+  color: #F4F5F2;
+}
+
+.setting-input {
+  width: 2.4ch;
+  padding: 0;
+  border: none;
+  border-bottom: 1.5px solid transparent;
+  background: none;
   text-align: center;
-  width: 100%;
 }
 
-.setting-time {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  width: 100%;
-  background-color: #4b5769;
-  border-radius: 10px;
+.is-editable .setting-input {
+  color: #E9FF00;
+  border-bottom-color: #E9FF00;
 }
 
-.setting-time-disabled {
-  color: #303946;
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  width: 100%;
-  background-color: #4b5769;
-  border-radius: 10px;
+.setting-input:disabled {
+  color: #3B3F37;
 }
 
-.timer-background-container {
-  position: relative;
-  width: 350px;
-  height: 350px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.timer-background-container .progress-circle {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  z-index: 1;
-}
-
-.timer-background-container .countdown-circle-timer {
-  position: relative;
-  z-index: 2;
-}
-
-.current-action-label {
-  display: flex;
-  flex-direction: row;
-  justify-content: center;
-  align-items: center;
-  gap: 5px;
-}
-
-.hang-icon {
-  height: 1.2rem;
-  width: 1.2rem;
+.is-editable .setting-input:focus {
+  outline: none;
+  background: rgba(233, 255, 0, 0.08);
 }
